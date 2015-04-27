@@ -2,10 +2,10 @@
 
 var emitter = require('contra.emitter');
 var crossvent = require('crossvent');
-var body = document.body;
-var documentElement = document.documentElement;
 
-function dragula (containers, options) {
+function dragula (initialContainers, options) {
+  var body = document.body;
+  var documentElement = document.documentElement;
   var _mirror; // mirror image
   var _source; // source container
   var _item; // item being dragged
@@ -14,6 +14,7 @@ function dragula (containers, options) {
   var _initialSibling; // reference sibling when grabbed
   var _currentSibling; // reference sibling now
   var _copy; // item used for copying
+  var _containers = []; // containers managed by the drake
 
   var o = options || {};
   if (o.moves === void 0) { o.moves = always; }
@@ -35,15 +36,24 @@ function dragula (containers, options) {
   });
 
   events();
+  api.addContainer(initialContainers);
 
   return api;
 
   function manipulateContainers (op) {
     return function addOrRemove (all) {
-      var containers = Array.isArray(all) ? all : [all];
-      containers.forEach(track);
+      var changes = Array.isArray(all) ? all : [all];
+      changes.forEach(track);
+      if (op === 'add') {
+        _containers = _containers.concat(changes);
+      } else {
+        _containers = _containers.filter(removals);
+      }
       function track (container) {
         touchy(container, op, 'mousedown', grab);
+      }
+      function removals (container) {
+        return changes.indexOf(container) === -1;
       }
     };
   }
@@ -51,11 +61,11 @@ function dragula (containers, options) {
   function events (remove) {
     var op = remove ? 'remove' : 'add';
     touchy(documentElement, op, 'mouseup', release);
-    api[op + 'Container'](containers);
   }
 
   function destroy () {
     events(true);
+    api.removeContainer(_containers);
     release({});
   }
 
@@ -78,14 +88,16 @@ function dragula (containers, options) {
   }
 
   function start (item) {
+    var handle = item;
+
     if (api.dragging && _mirror) {
       return;
     }
 
-    if (containers.indexOf(item) !== -1) {
+    if (_containers.indexOf(item) !== -1) {
       return; // don't drag container itself
     }
-    while (containers.indexOf(item.parentElement) === -1) {
+    while (_containers.indexOf(item.parentElement) === -1) {
       if (invalidTarget(item)) {
         return;
       }
@@ -96,7 +108,7 @@ function dragula (containers, options) {
     }
 
     var container = item.parentElement;
-    var movable = o.moves(item, container);
+    var movable = o.moves(item, container, handle);
     if (!movable) {
       return;
     }
@@ -224,7 +236,7 @@ function dragula (containers, options) {
     return target;
 
     function accepted () {
-      var droppable = containers.indexOf(target) !== -1;
+      var droppable = _containers.indexOf(target) !== -1;
       if (droppable === false) {
         return false;
       }
@@ -368,9 +380,11 @@ function getScroll (scrollProp, offsetProp) {
   if (typeof global[offsetProp] !== 'undefined') {
     return global[offsetProp];
   }
+  var documentElement = document.documentElement;
   if (documentElement.clientHeight) {
     return documentElement[scrollProp];
   }
+  var body = document.body;
   return body[scrollProp];
 }
 
@@ -416,7 +430,14 @@ function getCoord (coord, e) {
   if (typeof e.targetTouches === 'undefined') {
     return e[coord];
   }
-  return e.targetTouches && e.targetTouches.length && e.targetTouches[0][coord] || 0;
+  // on touchend event, we have to use `e.changedTouches`
+  // see http://stackoverflow.com/questions/7192563/touchend-event-properties
+  // see https://github.com/bevacqua/dragula/issues/34
+  return (
+    (e.targetTouches  &&  e.targetTouches.length  && e.targetTouches[0][coord])  ||
+    (e.changedTouches &&  e.changedTouches.length && e.changedTouches[0][coord]) ||
+    0
+  );
 }
 
 module.exports = dragula;

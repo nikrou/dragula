@@ -54,7 +54,7 @@ You can also provide an `options` object. Here's an overview.
 
 ```js
 dragula(containers, {
-  moves: function (el, container) {
+  moves: function (el, container, handle) {
     return true;         // elements are always draggable by default
   },
   accepts: function (el, target, source, sibling) {
@@ -71,7 +71,7 @@ The options are detailed below.
 
 #### `options.moves`
 
-You can define a `moves` method which will be invoked with `(el, container)` whenever an element is clicked. If this method returns `false`, a drag event won't begin, and the event won't be prevented either.
+You can define a `moves` method which will be invoked with `(el, container, handle)` whenever an element is clicked. If this method returns `false`, a drag event won't begin, and the event won't be prevented either. The `handle` element will be the original click target, which comes in handy to test if that element is an expected _"drag handle"_.
 
 #### `options.accepts`
 
@@ -148,8 +148,8 @@ Event Name | Listener Arguments      | Event Description
 `drag`     | `el, container`         | `el` was lifted from `container`
 `dragend`  | `el`                    | Dragging event for `el` ended with either `cancel`, `remove`, or `drop`
 `drop`     | `el, container, source` | `el` was dropped into `container`, and originally came from `source`
-`cancel`   | `el, container`         | `el` was being dragged but it got nowhere and went back into `container`, it's last stable parent
-`remove`   | `el, container`         | `el` was being dragged but it got nowhere and it was removed from the DOM. It's last stable parent was `container`.
+`cancel`   | `el, container`         | `el` was being dragged but it got nowhere and went back into `container`, its last stable parent
+`remove`   | `el, container`         | `el` was being dragged but it got nowhere and it was removed from the DOM. Its last stable parent was `container`.
 `shadow`   | `el, container`         | `el`, _the visual aid shadow_, was moved into `container`. May trigger many times as the position of `el` changes, even within the same `container`
 
 #### `drake.destroy()`
